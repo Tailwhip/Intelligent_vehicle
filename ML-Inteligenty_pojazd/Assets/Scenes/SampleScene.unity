@@ -794,7 +794,66 @@ PrefabInstance:
       propertyPath: wall
       value: 
       objectReference: {fileID: 1070532823}
-    m_RemovedComponents: []
+    - target: {fileID: 114768481995367518, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114900589059629316, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114137697095471256, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114749201916815022, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114613041712516570, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 54193900614168582, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Constraints
+      value: 80
+      objectReference: {fileID: 0}
+    - target: {fileID: 1572892189920008, guid: bc85e13571a45b14f9bd174419b0b5eb, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1717536885157956, guid: bc85e13571a45b14f9bd174419b0b5eb, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 114773101100231048, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114707431070269262, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114822763023268524, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114028128425785128, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 114436113226538734, guid: bc85e13571a45b14f9bd174419b0b5eb, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: bc85e13571a45b14f9bd174419b0b5eb, type: 3}
 --- !u!1 &1379117795
 GameObject:

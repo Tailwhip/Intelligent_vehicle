@@ -6,19 +6,19 @@ using UnityEngine;
 public class Neuron {
 
 	public int numInputs;
-	public double bias;
-	public double output;
-	public double errorGradient;
-	public List<double> weights = new List<double>();
-	public List<double> inputs = new List<double>();
+	public float bias;
+	public float output;
+	public float errorGradient;
+	public List<float> weights = new List<float>();
+	public List<float> inputs = new List<float>();
 
 	public Neuron(int nInputs)
 	{
-		float weightRange = (float) 2.4/(float) nInputs;
+		float weightRange = 2.4f / nInputs;
 		bias = UnityEngine.Random.Range(-weightRange,weightRange);
 		numInputs = nInputs;
 
 		for(int i = 0; i < nInputs; i++)
-			weights.Add(UnityEngine.Random.Range(-weightRange,weightRange));
+			weights.Add(UnityEngine.Random.Range(-weightRange, weightRange));
 	}
 }

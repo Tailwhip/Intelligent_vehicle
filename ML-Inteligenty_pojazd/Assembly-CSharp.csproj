@@ -69,6 +69,7 @@
     <Compile Include="Assets\Scripts\UltrasonicMeassure.cs" />
     <Compile Include="Assets\Scripts\VehicleController.cs" />
     <None Include="Assets\weights.txt" />
+    <None Include="Assets\Weights\2019-03-17-weights_po_kwantyzacji_stanów.txt" />
     <Reference Include="Unity.TextMeshPro.Editor">
       <HintPath>D:/zajecia/Projekty/14-Inteligentny_pojazd/03-Oprogramowanie/ML-Inteligenty_pojazd/Library/ScriptAssemblies/Unity.TextMeshPro.Editor.dll</HintPath>
     </Reference>

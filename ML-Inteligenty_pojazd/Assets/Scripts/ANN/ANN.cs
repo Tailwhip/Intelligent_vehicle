@@ -9,10 +9,10 @@ public class ANN{
 	public int numOutputs;
 	public int numHidden;
 	public int numNPerHidden;
-	public double alpha;
+	public float alpha;
 	List<Layer> layers = new List<Layer>();
 
-	public ANN(int nI, int nO, int nH, int nPH, double a)
+	public ANN(int nI, int nO, int nH, int nPH, float a)
 	{
 		numInputs = nI;
 		numOutputs = nO;
@@ -37,18 +37,18 @@ public class ANN{
 		}
 	}
 
-	public List<double> Train(List<double> inputValues, List<double> desiredOutput)
+	public List<float> Train(List<float> inputValues, List<float> desiredOutput)
 	{
-		List<double> outputValues = new List<double>();
+		List<float> outputValues = new List<float>();
 		outputValues = CalcOutput(inputValues, desiredOutput);
 		UpdateWeights(outputValues, desiredOutput);
 		return outputValues;
 	}
 
-	public List<double> CalcOutput(List<double> inputValues, List<double> desiredOutput)
+	public List<float> CalcOutput(List<float> inputValues, List<float> desiredOutput)
 	{
-		List<double> inputs = new List<double>();
-		List<double> outputValues = new List<double>();
+		List<float> inputs = new List<float>();
+		List<float> outputValues = new List<float>();
 		int currentInput = 0;
 
 		if(inputValues.Count != numInputs)
@@ -57,18 +57,18 @@ public class ANN{
 			return outputValues;
 		}
 
-		inputs = new List<double>(inputValues);
+		inputs = new List<float>(inputValues);
 		for(int i = 0; i < numHidden + 1; i++)
 		{
 				if(i > 0)
 				{
-					inputs = new List<double>(outputValues);
+					inputs = new List<float>(outputValues);
 				}
 				outputValues.Clear();
 
 				for(int j = 0; j < layers[i].numNeurons; j++)
 				{
-					double N = 0;
+					float N = 0;
 					layers[i].neurons[j].inputs.Clear();
 
 					for(int k = 0; k < layers[i].neurons[j].numInputs; k++)
@@ -92,10 +92,10 @@ public class ANN{
 		return outputValues;
 	}
 
-	public List<double> CalcOutput(List<double> inputValues)
+	public List<float> CalcOutput(List<float> inputValues)
 	{
-		List<double> inputs = new List<double>();
-		List<double> outputValues = new List<double>();
+		List<float> inputs = new List<float>();
+		List<float> outputValues = new List<float>();
 		int currentInput = 0;
 
 		if(inputValues.Count != numInputs)
@@ -104,18 +104,18 @@ public class ANN{
 			return outputValues;
 		}
 
-		inputs = new List<double>(inputValues);
+		inputs = new List<float>(inputValues);
 		for(int i = 0; i < numHidden + 1; i++)
 		{
 				if(i > 0)
 				{
-					inputs = new List<double>(outputValues);
+					inputs = new List<float>(outputValues);
 				}
 				outputValues.Clear();
 
 				for(int j = 0; j < layers[i].numNeurons; j++)
 				{
-					double N = 0;
+					float N = 0;
 					layers[i].neurons[j].inputs.Clear();
 
 					for(int k = 0; k < layers[i].neurons[j].numInputs; k++)
@@ -131,7 +131,6 @@ public class ANN{
 						layers[i].neurons[j].output = ActivationFunctionO(N);
 					else
 						layers[i].neurons[j].output = ActivationFunction(N);
-					
 					outputValues.Add(layers[i].neurons[j].output);
 					currentInput = 0;
 				}
@@ -146,11 +145,11 @@ public class ANN{
 		{
 			foreach(Neuron n in l.neurons)
 			{
-				foreach(double w in n.weights)
+				foreach(float w in n.weights)
 				{
-					weightStr += w + ",";
+					weightStr += w + ";";
 				}
-				weightStr += n.bias + ",";
+				weightStr += n.bias + ";";
 			}
 		}
 		return weightStr;
@@ -159,7 +158,7 @@ public class ANN{
 	public void LoadWeights(string weightStr)
 	{
 		if(weightStr == "") return;
-		string[] weightValues = weightStr.Split(',');
+		string[] weightValues = weightStr.Split(';');
 		int w = 0;
 		foreach(Layer l in layers)
 		{
@@ -167,18 +166,18 @@ public class ANN{
 			{
 				for(int i = 0; i < n.weights.Count; i++)
 				{
-					n.weights[i] = System.Convert.ToDouble(weightValues[w]);
+					n.weights[i] = System.Convert.ToSingle(weightValues[w]);
 					w++;
 				}
-				n.bias = System.Convert.ToDouble(weightValues[w]);
+				n.bias = System.Convert.ToSingle(weightValues[w]);
 				w++;
 			}
 		}
 	}
 	
-	void UpdateWeights(List<double> outputs, List<double> desiredOutput)
+	void UpdateWeights(List<float> outputs, List<float> desiredOutput)
 	{
-		double error;
+		float error;
 		for(int i = numHidden; i >= 0; i--)
 		{
 			for(int j = 0; j < layers[i].numNeurons; j++)
@@ -186,12 +185,12 @@ public class ANN{
 				if(i == numHidden)
 				{
 					error = desiredOutput[j] - outputs[j];
-					layers[i].neurons[j].errorGradient = outputs[j] * (1-outputs[j]) * error;
+					layers[i].neurons[j].errorGradient = AFDerivativeO(outputs[j]) * error;
 				}
 				else
 				{
-					layers[i].neurons[j].errorGradient = layers[i].neurons[j].output * (1-layers[i].neurons[j].output);
-					double errorGradSum = 0;
+                    layers[i].neurons[j].errorGradient = AFDerivative(layers[i].neurons[j].output);
+					float errorGradSum = 0;
 					for(int p = 0; p < layers[i+1].numNeurons; p++)
 					{
 						errorGradSum += layers[i+1].neurons[p].errorGradient * layers[i+1].neurons[p].weights[j];
@@ -207,54 +206,88 @@ public class ANN{
 					}
 					else
 					{
-						layers[i].neurons[j].weights[k] += alpha * layers[i].neurons[j].inputs[k] * layers[i].neurons[j].errorGradient;
+						layers[i].neurons[j].weights[k] += alpha * layers[i].neurons[j].inputs[k] * 
+                            layers[i].neurons[j].errorGradient;
 					}
 				}
 				layers[i].neurons[j].bias += alpha * -1 * layers[i].neurons[j].errorGradient;
 			}
-
 		}
 
 	}
-
-
-
-	double ActivationFunction(double value)
+    //--------------------------------------------ACTIVATION-FUNCTIONS------------------------------------------------------  
+	float ActivationFunction(float value)
 	{
-		return Sigmoid(value);
+		return TanH(value);
 	}
 
-	double ActivationFunctionO(double value)
+	float ActivationFunctionO(float value)
 	{
-		return Sigmoid(value);
+        return TanH(value);
 	}
 
-	double TanH(double value)
+	float TanH(float value)
 	{
-		double k = (double) System.Math.Exp(-2*value);
+        return (float)System.Math.Tanh(value);
+        /*
+		float k = (float)System.Math.Exp(-2*value);
     	return 2 / (1.0f + k) - 1;
-	}
+        */
+    }
 
-	double ReLu(double value)
+	float ReLu(float value)
 	{
 		if(value > 0) return value;
 		else return 0;
 	}
 
-	double Linear(double value)
+	float Linear(float value)
 	{
 		return value;
 	}
 
-	double LeakyReLu(double value)
+	float LeakyReLu(float value)
 	{
-		if(value < 0) return 0.01*value;
-   		else return value;
+        if (value < 0) return Mathf.Clamp(0.01f * value, -1f, 0f);
+   		else return Mathf.Clamp(value, 0f, 1f);
 	}
 
-	double Sigmoid(double value) 
+	float Sigmoid(float value) 
 	{
-    	double k = (double) System.Math.Exp(value);
+    	float k = (float) System.Math.Exp(value);
     	return k / (1.0f + k);
 	}
+
+    //----------------------------------------ACTIVATION-FUNCTIONS-DERIVATIVES-----------------------------------------------------  
+    float AFDerivative(float value)
+    {
+        return TanHDerivative(value);
+    }
+
+    float AFDerivativeO(float value)
+    {
+        return TanHDerivative(value);
+    }
+
+    float TanHDerivative(float value)
+    {
+        return 1 - value*value;
+    }
+    
+    float ReLuDerivative(float value)
+    {
+        if (value < 0) return 0.0f;
+        else return 1.0f;
+    }
+    
+    float LeakyReLuDerivative(float value)
+    {
+        if (value < 0) return 0.01f;
+        else return 1.0f;
+    }
+
+    float SigmoidDerivative(float value)
+    {
+        return value * (1 - value);
+    }
 }
