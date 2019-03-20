@@ -166,3 +166,7 @@ D:\Zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\14-Inteligenty_poja
 D:\Zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\14-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.csproj.CopyComplete
 D:\Zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\14-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.dll
 D:\Zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\14-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.pdb
+D:\zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\ML-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.csprojAssemblyReference.cache
+D:\zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\ML-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.csproj.CoreCompileInputs.cache
+D:\zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\ML-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.dll
+D:\zajecia\Projekty\14-Inteligentny_pojazd\03-Oprogramowanie\ML-Inteligenty_pojazd\obj\Debug\Assembly-CSharp.pdb

@@ -255,8 +255,12 @@ public class ANN{
 	float Sigmoid(float value) 
 	{
     	float k = (float) System.Math.Exp(value);
-    	return k / (1.0f + k);
-	}
+        if (k == Mathf.Infinity)
+            return 1;
+        if (k == Mathf.NegativeInfinity)
+            return -1;
+        return k / (1.0f + k);
+    }
 
     //----------------------------------------ACTIVATION-FUNCTIONS-DERIVATIVES-----------------------------------------------------  
     float AFDerivative(float value)

@@ -9,6 +9,7 @@ TagManager:
   - ResetPlane
   - dead
   - goal
+  - drop
   layers:
   - Default
   - TransparentFX

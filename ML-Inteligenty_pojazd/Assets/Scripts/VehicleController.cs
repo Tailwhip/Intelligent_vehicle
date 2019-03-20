@@ -344,29 +344,29 @@ public class VehicleController : MonoBehaviour {
         {
             for (int i = replayMemory.Count - 1; i >= 0; i--)
             {
-                List<float> toutputsOld = new List<float>();
-                List<float> toutputsNew = new List<float>();
-                toutputsOld = SoftMax(ann.CalcOutput(replayMemory[i].states));
-
-                float maxQOld = toutputsOld.Max();
-                int action = toutputsOld.ToList().IndexOf(maxQOld);
+                List<float> toutputsOld = new List<float>();                                        // List of actions at time [t] (present)
+                List<float> toutputsNew = new List<float>();                                        // List of actions at time [t + 1] (future)
+                toutputsOld = SoftMax(ann.CalcOutput(replayMemory[i].states));                      // Action in time [t] is equal to NN output for [i] step states in replay memory
+                    
+                float maxQOld = toutputsOld.Max();                                                  // maximum Q value at [i] step is equal to maximum Q value in the list of actions in time [t]
+                int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
 
                 float feedback;
-                if (i == replayMemory.Count - 1 || collisionFail || resetTimer == 0 || win)
-                {
-                    feedback = replayMemory[i].reward;
-                }
-                    
+                if (i == replayMemory.Count - 1 || collisionFail || resetTimer == 0 || win)         // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
+                {                                                                                   // it's collision fail, timer reset and getting into the source of light) then the  
+                    feedback = replayMemory[i].reward;                                              // feedback (new reward) is equal to the reward in [i] replay memory, because it's the end of the
+                }                                                                                   // sequence and there's no event after to count Bellman's equation
+
                 else
                 {
-                    toutputsNew = SoftMax(ann.CalcOutput(replayMemory[i + 1].states));
-                    maxQ = toutputsNew.Max();
+                    toutputsNew = SoftMax(ann.CalcOutput(replayMemory[i + 1].states));              // otherwise the action at time [t + 1] is equal to NN output for [i + 1] step states
+                    maxQ = toutputsNew.Max();                                                       // in replay memory and then feedback is equal to the Bellman's Equation
                     feedback = (replayMemory[i].reward +
                         discount * maxQ);
                 }
 
-                toutputsOld[action] = feedback;
-                ann.Train(replayMemory[i].states, toutputsOld);
+                toutputsOld[action] = feedback;                                                     // then the action at time [t] with max Q value (the best action) is setted as counted feedback
+                ann.Train(replayMemory[i].states, toutputsOld);                                     // value and it's used to train NN for [i] state
             }
 
             if (timer > bestTime)
