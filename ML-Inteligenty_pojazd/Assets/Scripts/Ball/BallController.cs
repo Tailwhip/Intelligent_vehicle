@@ -6,14 +6,16 @@ using System.IO;
 
 public class BallController : MonoBehaviour {
 
-    private bool collisionFail = false;
-    private bool win = false;
+
     private int saveTimer = 25000;
 
     private ANN ann;
     private List<float> calcOutputs;
     private List<float> states;
     private List<float> qs;
+    public float sse = 0f;
+    public float lastSSE = 1f;
+    string currentWeights;
 
     private float reward = 0.0f;                            //reward to associate with actions
     private float rewardSum = 0.0f;
@@ -28,6 +30,7 @@ public class BallController : MonoBehaviour {
     private float exploreDecay = 0.01f;
     private int resetTimer = 500;
     private int resetCounter = 0;
+    private int reLearnCounter = 2000;
 
     // Objects:
     private Rigidbody rb;
@@ -48,13 +51,14 @@ public class BallController : MonoBehaviour {
 
     private void Start()
     {
-        ann = new ANN(3, 2, 1, 7, 0.2f);
+        ann = new ANN(3, 2, 1, 7, 0.3f);
+        /*
         if (File.Exists(Application.dataPath + "/BallWeights.txt"))
         {
             LoadWeightsFromFile();
             exploreRate = 0.05f;
         }
-
+        */
         ballBs = ball.GetComponent<BallState>();
         ballRb = ball.GetComponent<Rigidbody>();
         rb = this.GetComponent<Rigidbody>();
@@ -115,9 +119,9 @@ public class BallController : MonoBehaviour {
         states = new List<float>();
         
         /// sending inputs:
-        states.Add(this.transform.rotation.x);
-        states.Add(ball.transform.position.z);
-        states.Add(ballRb.angularVelocity.x);
+        states.Add(Round(this.transform.rotation.x));
+        states.Add(Round(ball.transform.position.z));
+        states.Add(Round(ballRb.angularVelocity.x));
     }
       
     private void Drive()
@@ -152,11 +156,10 @@ public class BallController : MonoBehaviour {
         if (ballBs.dropped)
         {
             reward += -1f;
-            win = true;
         }
  
         else
-            reward += 0.01f;
+            reward += 0.005f;
 
 
         // setting replay memory:
@@ -191,11 +194,30 @@ public class BallController : MonoBehaviour {
                     feedback = (replayMemory[i].reward +
                         discount * maxQ);
                 }
+                float thisError = 0f;
+                currentWeights = ann.PrintWeights();
 
                 toutputsOld[action] = feedback;                                                     // then the action at time [t] with max Q value (the best action) is setted as counted feedback
-                ann.Train(replayMemory[i].states, toutputsOld);                                     // value and it's used to train NN for [i] state
+                List<float> calcOutputs = ann.Train(replayMemory[i].states, toutputsOld);           // value and it's used to train NN for [i] state
+                for (int j = 0; j < calcOutputs.Count; j++)
+                    thisError += (Mathf.Pow((toutputsOld[j] - calcOutputs[j]), 2));
+                thisError = thisError / calcOutputs.Count;
+                sse += thisError;
             }
-
+            sse /= replayMemory.Count;
+            
+            if(lastSSE < sse)
+            {
+                ann.LoadWeights(currentWeights);
+                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.5f);
+            }
+            else
+            {
+                Debug.Log(sse);
+                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.5f);
+                lastSSE = sse;
+            }
+            
             if (timer > bestTime)
             {
                 bestTime = timer;
@@ -210,17 +232,21 @@ public class BallController : MonoBehaviour {
     {
         this.transform.position = platformStartPos;
         this.transform.rotation = platformStartRot;
-        ball.transform.position = ballStartPos;
+        ball.transform.position = ballStartPos + new Vector3(0, 0, Random.Range(-0.5f, 0.5f));
         ball.transform.rotation = ballStartRot;
         rb.velocity = new Vector3(0f, 0f, 0f);
         rb.angularVelocity = new Vector3(0f, 0f, 0f);
         ballRb.velocity = new Vector3(0f, 0f, 0f);
         ballRb.angularVelocity = new Vector3(0f, 0f, 0f);
-        win = false;
         timer = 0;
         ballBs.dropped = false;
-        collisionFail = false;
         resetCounter++;
+        reLearnCounter--;
+        if (reLearnCounter == 0)
+        {
+
+        }
+
         Debug.Log(resetCounter + ". Reward = " + reward);
         reward = 0;
         resetTimer = 500;
@@ -230,14 +256,16 @@ public class BallController : MonoBehaviour {
     {
         UpdateInput();
         Drive();
-        Steer();
+        //Steer();
         saveTimer--;
+        /*
         if (saveTimer == 0)
         {
             SaveWeightsToFile();
             Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
             saveTimer = 25000;
         }
+        */
     }
 
     void SaveWeightsToFile()
@@ -291,7 +319,11 @@ public class BallController : MonoBehaviour {
 
     private void OnGUI()
     {
-
+        GUI.color = Color.red;
+        GUI.Label(new Rect(100, 25, 250, 30), "Platform X Rot: " + states[0]);
+        GUI.Label(new Rect(100, 50, 250, 30), "Ball Z position: " + states[1]);
+        GUI.Label(new Rect(100, 75, 250, 30), "Ball X position: " + states[2]);
+        
         GUI.color = Color.green;
         GUI.Label(new Rect(300, 25, 250, 30), "Fails: " + failCount);
         GUI.Label(new Rect(300, 50, 250, 30), "Decay Rate: " + exploreRate);
@@ -301,7 +333,8 @@ public class BallController : MonoBehaviour {
         GUI.Label(new Rect(300, 150, 250, 30), "Time Scale: " + Time.timeScale);
         GUI.Label(new Rect(300, 225, 250, 30), "Reward Sum: " + rewardSum);
         GUI.Label(new Rect(300, 250, 250, 30), "Punishment Sum: " + punishSum);
-        
+        GUI.Label(new Rect(300, 275, 250, 30), "eta: " + ann.eta);
+        GUI.Label(new Rect(300, 300, 250, 30), "last SSE: " + lastSSE);
     }
 
 }

@@ -63,7 +63,7 @@ public class VehicleController : MonoBehaviour {
     private int mCapacity = 10000;                          //memory capacity
 
     private float discount = 0.95f;                         //how much future states affect rewards
-    private float exploreRate = 100.0f;                     //chance of picking random action
+    private float exploreRate = 0.05f;                     //chance of picking random action
     private float maxExploreRate = 100.0f;					//max chance value
     private float minExploreRate = 0.05f;					//min chance value
     private float exploreDecay = 0.01f;
@@ -191,7 +191,7 @@ public class VehicleController : MonoBehaviour {
         intensity4.Set((LightSource.transform.position.x - phototransistor4.transform.position.x), (LightSource.transform.position.z - phototransistor4.transform.position.z));
 
         intensity = (1f - (intensity1.magnitude / 100f)) + (1f - (intensity2.magnitude / 100f)) + (1f - (intensity3.magnitude / 100f)) + (1f - (intensity4.magnitude / 100f));
-
+        /*
         US1distance = 0f;
         US2distance = 0f;
         US3distance = 0f;
@@ -235,6 +235,7 @@ public class VehicleController : MonoBehaviour {
             //dist = 1 - hit.distance / visibleDistance;
             US5distance = 1 - hit.distance / visibleDistance;
         }
+        */
     }
       
     private void Drive()
@@ -352,7 +353,7 @@ public class VehicleController : MonoBehaviour {
                 int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
 
                 float feedback;
-                if (i == replayMemory.Count - 1 || collisionFail || resetTimer == 0 || win)         // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
+                if (i == replayMemory.Count - 1)                                                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
                 {                                                                                   // it's collision fail, timer reset and getting into the source of light) then the  
                     feedback = replayMemory[i].reward;                                              // feedback (new reward) is equal to the reward in [i] replay memory, because it's the end of the
                 }                                                                                   // sequence and there's no event after to count Bellman's equation
