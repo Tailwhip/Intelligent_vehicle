@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.57481694, a: 1}
+  m_IndirectSpecularColor: {r: 0.37311926, g: 0.38073996, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -350,37 +350,6 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 2000, y: 1, z: 2000}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &374360365
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 374360366}
-  m_Layer: 0
-  m_Name: Classic_Vehicle
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &374360366
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 374360365}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.070053, y: -8.969742, z: -30.558372}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children:
-  - {fileID: 1379117796}
-  m_Father: {fileID: 0}
-  m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &511677890
 GameObject:
   m_ObjectHideFlags: 0
@@ -1214,6 +1183,26 @@ PrefabInstance:
       propertyPath: m_Constraints
       value: 80
       objectReference: {fileID: 0}
+    - target: {fileID: 54193900614168582, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_IsKinematic
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 54193900614168582, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_UseGravity
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 54193900614168582, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_AngularDrag
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 54193900614168582, guid: bc85e13571a45b14f9bd174419b0b5eb,
+        type: 3}
+      propertyPath: m_Drag
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1572892189920008, guid: bc85e13571a45b14f9bd174419b0b5eb, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -1256,7 +1245,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1379117796}
   m_Layer: 11
-  m_Name: Area_classic
+  m_Name: Classic_Vehicle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1271,7 +1260,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1379117795}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.070053, y: 8.969742, z: 30.558372}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1.22, y: 0.32999998, z: 1.18}
   m_Children:
   - {fileID: 1213140046}
@@ -1281,8 +1270,8 @@ Transform:
   - {fileID: 699478955}
   - {fileID: 330814312}
   - {fileID: 1070532824}
-  m_Father: {fileID: 374360366}
-  m_RootOrder: 0
+  m_Father: {fileID: 0}
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1531016958
 GameObject:
@@ -1299,7 +1288,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1531016959
 Transform:
   m_ObjectHideFlags: 0
@@ -1611,7 +1600,7 @@ Transform:
   m_GameObject: {fileID: 1853825019}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 101, y: 3, z: 100}
+  m_LocalScale: {x: 1000, y: 3, z: 1000}
   m_Children: []
   m_Father: {fileID: 1379117796}
   m_RootOrder: 3

@@ -30,7 +30,8 @@ public class BallController : MonoBehaviour {
     private float exploreDecay = 0.01f;
     private int resetTimer = 500;
     private int resetCounter = 0;
-    private int reLearnCounter = 2000;
+    private int reLearnCounter;
+    private int rewardCounter = 0;
 
     // Objects:
     private Rigidbody rb;
@@ -62,13 +63,14 @@ public class BallController : MonoBehaviour {
         ballBs = ball.GetComponent<BallState>();
         ballRb = ball.GetComponent<Rigidbody>();
         rb = this.GetComponent<Rigidbody>();
+        reLearnCounter = 20;
 
         // initialise reset position variables:
         ballStartPos = ball.transform.position;
         ballStartRot = ball.transform.rotation;
         platformStartPos = this.transform.position;
         platformStartRot = this.transform.rotation;
-        Time.timeScale = 1.0f;
+        Time.timeScale = 100f;
     }
 
     private void Update()
@@ -155,7 +157,7 @@ public class BallController : MonoBehaviour {
 
         if (ballBs.dropped)
         {
-            reward += -1f;
+            reward = -1f;
         }
  
         else
@@ -183,7 +185,7 @@ public class BallController : MonoBehaviour {
                 int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
 
                 float feedback;
-                if (i == replayMemory.Count - 1 || replayMemory[i].reward == -1)                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
+                if (i == replayMemory.Count - 1)                                                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
                 {                                                                                   // it's collision fail, timer reset and getting into the source of light) then the  
                     feedback = replayMemory[i].reward;                                              // feedback (new reward) is equal to the reward in [i] replay memory, because it's the end of the
                 }                                                                                   // sequence and there's no event after to count Bellman's equation
@@ -195,7 +197,7 @@ public class BallController : MonoBehaviour {
                         discount * maxQ);
                 }
                 float thisError = 0f;
-                currentWeights = ann.PrintWeights();
+                //currentWeights = ann.PrintWeights();
 
                 toutputsOld[action] = feedback;                                                     // then the action at time [t] with max Q value (the best action) is setted as counted feedback
                 List<float> calcOutputs = ann.Train(replayMemory[i].states, toutputsOld);           // value and it's used to train NN for [i] state
@@ -208,13 +210,13 @@ public class BallController : MonoBehaviour {
             
             if(lastSSE < sse)
             {
-                ann.LoadWeights(currentWeights);
-                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.5f);
+                //ann.LoadWeights(currentWeights);
+                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.01f, 0.9f);
             }
             else
             {
                 Debug.Log(sse);
-                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.5f);
+                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.01f, 0.9f);
                 lastSSE = sse;
             }
             
@@ -241,12 +243,28 @@ public class BallController : MonoBehaviour {
         timer = 0;
         ballBs.dropped = false;
         resetCounter++;
-        reLearnCounter--;
+        
         if (reLearnCounter == 0)
-        {
-
+        {           
+            if (reward > 0f)
+            {
+               rewardCounter++;
+            }
+            else
+            {
+                Start();
+            }
+                
+            if (rewardCounter > 10)
+            {
+                SaveWeightsToFile();
+                Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
+                Debug.Break();
+            }
         }
-
+        else
+            reLearnCounter--;
+        
         Debug.Log(resetCounter + ". Reward = " + reward);
         reward = 0;
         resetTimer = 500;
@@ -323,18 +341,22 @@ public class BallController : MonoBehaviour {
         GUI.Label(new Rect(100, 25, 250, 30), "Platform X Rot: " + states[0]);
         GUI.Label(new Rect(100, 50, 250, 30), "Ball Z position: " + states[1]);
         GUI.Label(new Rect(100, 75, 250, 30), "Ball X position: " + states[2]);
-        
+
+        GUI.color = Color.black;
+        GUI.Label(new Rect(220, 25, 250, 30), "Prawo: " + qs[0]);
+        GUI.Label(new Rect(220, 50, 250, 30), "Lewo: " + qs[1]);
+
         GUI.color = Color.green;
-        GUI.Label(new Rect(300, 25, 250, 30), "Fails: " + failCount);
-        GUI.Label(new Rect(300, 50, 250, 30), "Decay Rate: " + exploreRate);
-        GUI.Label(new Rect(300, 75, 250, 30), "Best Time: " + bestTime);
-        GUI.Label(new Rect(300, 100, 250, 30), "Timer: " + timer);
-        GUI.Label(new Rect(300, 125, 250, 30), "Reward: " + reward);
-        GUI.Label(new Rect(300, 150, 250, 30), "Time Scale: " + Time.timeScale);
-        GUI.Label(new Rect(300, 225, 250, 30), "Reward Sum: " + rewardSum);
-        GUI.Label(new Rect(300, 250, 250, 30), "Punishment Sum: " + punishSum);
-        GUI.Label(new Rect(300, 275, 250, 30), "eta: " + ann.eta);
-        GUI.Label(new Rect(300, 300, 250, 30), "last SSE: " + lastSSE);
+        GUI.Label(new Rect(400, 25, 250, 30), "Fails: " + failCount);
+        GUI.Label(new Rect(400, 50, 250, 30), "Decay Rate: " + exploreRate);
+        GUI.Label(new Rect(400, 75, 250, 30), "Best Time: " + bestTime);
+        GUI.Label(new Rect(400, 100, 250, 30), "Timer: " + timer);
+        GUI.Label(new Rect(400, 125, 250, 30), "Reward: " + reward);
+        GUI.Label(new Rect(400, 150, 250, 30), "Time Scale: " + Time.timeScale);
+        GUI.Label(new Rect(400, 225, 250, 30), "Reward Sum: " + rewardSum);
+        GUI.Label(new Rect(400, 250, 250, 30), "Punishment Sum: " + punishSum);
+        GUI.Label(new Rect(400, 275, 250, 30), "eta: " + ann.eta);
+        GUI.Label(new Rect(400, 300, 250, 30), "last SSE: " + lastSSE);
     }
 
 }

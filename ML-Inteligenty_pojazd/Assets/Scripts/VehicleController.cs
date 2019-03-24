@@ -22,18 +22,9 @@ public class Replay
 
 public class VehicleController : MonoBehaviour {
 
-    // Wheels input
-    public WheelCollider rightWheel_C, leftWheel_C, backWheel_C;
-    public Transform rightWheel_T, leftWheel_T, backWheel_T;
     public GameObject LightSource;
 
-    // Ultrasonic sensors input
-    public UltrasonicMeassure ultraSens1;
-    public UltrasonicMeassure ultraSens2;
-    public UltrasonicMeassure ultraSens3;
-    public UltrasonicMeassure ultraSens4;
-    public UltrasonicMeassure ultraSens5;
-
+    /// Ultrasonic sensors input
     private float visibleDistance = 50f;
     private float US1distance = 0f;
     private float US2distance = 0f;
@@ -41,20 +32,24 @@ public class VehicleController : MonoBehaviour {
     private float US4distance = 0f;
     private float US5distance = 0f;
 
-    // Phototransistor sensors input 
+    /// Phototransistor sensors input 
     public PhototransistorMeassure phototransistor1;
     public PhototransistorMeassure phototransistor2;
     public PhototransistorMeassure phototransistor3;
     public PhototransistorMeassure phototransistor4;
 
     private bool collisionFail = false;
+    private bool backFail = false;
     private bool win = false;
-    private int saveTimer = 25000;
+    private int saveTimer = 50000;
 
     private ANN ann;
     private List<float> calcOutputs;
     private List<float> states;
     private List<float> qs;
+    public float sse = 0f;
+    public float lastSSE = 1f;
+    string currentWeights;
 
     private float reward = 0.0f;                            //reward to associate with actions
     private float rewardSum = 0.0f;
@@ -63,39 +58,39 @@ public class VehicleController : MonoBehaviour {
     private int mCapacity = 10000;                          //memory capacity
 
     private float discount = 0.95f;                         //how much future states affect rewards
-    private float exploreRate = 0.05f;                     //chance of picking random action
+    private float exploreRate = 0.05f;                      //chance of picking random action
     private float maxExploreRate = 100.0f;					//max chance value
     private float minExploreRate = 0.05f;					//min chance value
     private float exploreDecay = 0.01f;
     private int resetTimer = 500;
     private int resetCounter = 0;
+    private int reLearnCounter;
+    private int rlcValue = 5000;
+    private int rewardCounter = 0;
 
-    // Objects:
+    /// objects:
     private Rigidbody rb;
     public GameObject wall;
 
-    // variables for reset the agent:
+    /// variables for reset the agent:
     private Quaternion vehicleStartRot;
     private Vector3 vehicleStartPos;
     private Vector3 lightStartPos;
-    private float looseCount = 0f;
-    private float winCount = 0f;
-    private float showReward = 0f;
     private Vector3 wallStartPos;
-    private float resetFactor = 3.0f;
+    private float resetFactor = 3.5f;                       // light bias value for reset training:
 
-    // variables to count delta intensity:
+    /// variables to count delta intensity:
     private float deltaIntensity = 0f;
     private float intensityOld = 0f;
     private float intensity = 0f;
     private int deltaCounter = 1;
 
-    // For OnGUI to display
+    /// For OnGUI to display
     private int failCount = 0;
     private float timer = 0;
     private float bestTime = 0;
 
-    // light intensity input:
+    /// light intensity input:
     private Vector2 intensity1;
     private Vector2 intensity2;
     private Vector2 intensity3;
@@ -103,17 +98,17 @@ public class VehicleController : MonoBehaviour {
 
     private void Start()
     {
-        ann = new ANN(4, 4, 2, 7, 0.2f);
+        ann = new ANN(4, 4, 2, 7, 0.3f);
+        /*
         if (File.Exists(Application.dataPath + "/weights.txt"))
         {
             LoadWeightsFromFile();
             exploreRate = 0.05f;
         }
-            
-        vehicleStartPos = this.transform.position;
-        vehicleStartRot = this.transform.rotation;
+        */  
         intensityOld = 0;
-        Time.timeScale = 1.0f;
+        Time.timeScale = 1f;
+        reLearnCounter = rlcValue;
 
         // initialise reset position variables:
         rb = this.GetComponent<Rigidbody>();
@@ -163,12 +158,17 @@ public class VehicleController : MonoBehaviour {
     {
         if (Input.GetKey("w"))
         {
-            this.transform.position += this.transform.forward * 2f;
+            //this.transform.position += this.transform.forward * 2f;
+            rb.AddForce(this.transform.forward * 200f);
+            //this.transform.Translate(this.transform.forward * 2f);
         }
+
 
         if (Input.GetKey("s"))
         {
-            this.transform.position += this.transform.forward * -2f;
+            //this.transform.Translate(this.transform.forward * -2f);
+            //this.transform.position += this.transform.forward * -2f;
+            rb.AddForce(this.transform.forward * -200f);
         }
 
         if (Input.GetKey("a"))
@@ -182,9 +182,10 @@ public class VehicleController : MonoBehaviour {
         }
     }
 
+
     private void UpdateInput()
     {
-        // counting light intensity inputs values:
+        /// counting light intensity inputs values:
         intensity1.Set((LightSource.transform.position.x - phototransistor1.transform.position.x), (LightSource.transform.position.z - phototransistor1.transform.position.z));
         intensity2.Set((LightSource.transform.position.x - phototransistor2.transform.position.x), (LightSource.transform.position.z - phototransistor2.transform.position.z));
         intensity3.Set((LightSource.transform.position.x - phototransistor3.transform.position.x), (LightSource.transform.position.z - phototransistor3.transform.position.z));
@@ -198,7 +199,7 @@ public class VehicleController : MonoBehaviour {
         US4distance = 0f;
         US5distance = 0f;
 
-    int layerMask = 1 << 11;
+        int layerMask = 1 << 11;
         RaycastHit hit;
 
         if (Physics.Raycast(this.transform.position, this.transform.forward, out hit, visibleDistance, layerMask))
@@ -236,17 +237,9 @@ public class VehicleController : MonoBehaviour {
             US5distance = 1 - hit.distance / visibleDistance;
         }
         */
-    }
-      
-    private void Drive()
-    {
-        /// counting timer:
-        resetTimer--;
-        timer += Time.deltaTime;
 
         /// creating states lists:
         states = new List<float>();
-        qs = new List<float>();
 
         /// sending inputs:
         /*
@@ -255,15 +248,23 @@ public class VehicleController : MonoBehaviour {
         states.Add(Round(0.5f - US3distance / visibleDistance));
         states.Add(Round(0.5f - US4distance / visibleDistance));
         states.Add(Round(0.5f - US5distance / visibleDistance));
-
+        
         states.Add(Round(rb.velocity.x / 100f));
         states.Add(Round(rb.velocity.z / 100f));
         */
-        states.Add(Round(0.5f - (intensity1.magnitude / 100f)));
-        states.Add(Round(0.5f - (intensity2.magnitude / 100f)));
-        states.Add(Round(0.5f - (intensity3.magnitude / 100f)));
-        states.Add(Round(0.5f - (intensity4.magnitude / 100f)));
+        states.Add(Mathf.Clamp(Round(1.0f - (intensity1.magnitude / 50f)), -1f, 1f));
+        states.Add(Mathf.Clamp(Round(1.0f - (intensity2.magnitude / 50f)), -1f, 1f));
+        states.Add(Mathf.Clamp(Round(1.0f - (intensity3.magnitude / 50f)), -1f, 1f));
+        states.Add(Mathf.Clamp(Round(1.0f - (intensity4.magnitude / 50f)), -1f, 1f));
+    }
 
+    private void Drive()
+    {
+        /// counting timer:
+        resetTimer--;
+        timer += Time.deltaTime;
+
+        qs = new List<float>();
         qs = SoftMax(ann.CalcOutput(states));
 
         float maxQ = qs.Max();
@@ -273,19 +274,19 @@ public class VehicleController : MonoBehaviour {
         exploreRate = Mathf.Clamp(exploreRate - exploreDecay, minExploreRate, maxExploreRate);
         if(Random.Range(0, 100) < exploreRate)
             maxQIndex = Random.Range(0, 4);
-
+        
         /// moving the vehicle using output values:
         /// move forward:
         if (maxQIndex == 0)
         {
             //this.transform.position += this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 2f;
-            rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 80f);
+            rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 200f);
         }
         
         if (maxQIndex == 1)
         {
             //this.transform.position += this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * -2f;
-            rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], 0f, 1f) * -80f);
+            rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], 0f, 1f) * -200f);
         }
         
         // turning:
@@ -299,36 +300,36 @@ public class VehicleController : MonoBehaviour {
             this.transform.Rotate(0, Mathf.Clamp(qs[maxQIndex], 0f, 1f) * -2f, 0, 0);
         }
         
-        //Debug.Log("0: " + qs[0]);
-        //Debug.Log("1: " + qs[1]);
         deltaCounter--;
-        // counting delta intensity and use it to punish or reward:
         /*
+        // counting delta intensity and use it to punish or reward:
         if (deltaCounter == 0)
         {
             deltaCounter = 1;
-            deltaIntensity = intensity - intensityOld;
-            if (deltaIntensity <= 0.0f)
+            deltaIntensity =  intensityOld - intensity1.magnitude;
+            //Debug.Log("DETLA: " + deltaIntensity);
+            if (deltaIntensity > 0.1f)
             {
-                reward += -0.005f;
-                punishSum += reward;
-                //Debug.Log("LOOSE1");
-                looseCount++;
+                reward += 0.001f;
+            }
+            else
+            {
+                //backFail = true;
+                reward += -0.002f;
             }
 
-            intensityOld = intensity;
+            intensityOld = intensity1.magnitude;
         }
         */
-        reward += -0.005f;
+        reward += -0.002f;
         if (collisionFail)
         {
-            reward += -1.0f;
-            punishSum += reward;
+            reward = -1.0f;
         }
 
         if (intensity > resetFactor)
         {
-            reward = 1f;
+            reward = 1.0f;
             win = true;
         }
 
@@ -341,8 +342,9 @@ public class VehicleController : MonoBehaviour {
         replayMemory.Add(lastMemory);
 
         // training through replay memory:
-        if (collisionFail || resetTimer == 0 || win)
+        if (collisionFail || resetTimer == 0 || win || backFail)
         {
+            
             for (int i = replayMemory.Count - 1; i >= 0; i--)
             {
                 List<float> toutputsOld = new List<float>();                                        // List of actions at time [t] (present)
@@ -353,7 +355,7 @@ public class VehicleController : MonoBehaviour {
                 int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
 
                 float feedback;
-                if (i == replayMemory.Count - 1)                                                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
+                if (i == replayMemory.Count - 1 || replayMemory[i].reward == -1)                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
                 {                                                                                   // it's collision fail, timer reset and getting into the source of light) then the  
                     feedback = replayMemory[i].reward;                                              // feedback (new reward) is equal to the reward in [i] replay memory, because it's the end of the
                 }                                                                                   // sequence and there's no event after to count Bellman's equation
@@ -365,9 +367,27 @@ public class VehicleController : MonoBehaviour {
                     feedback = (replayMemory[i].reward +
                         discount * maxQ);
                 }
+                float thisError = 0f;
+                currentWeights = ann.PrintWeights();
 
                 toutputsOld[action] = feedback;                                                     // then the action at time [t] with max Q value (the best action) is setted as counted feedback
-                ann.Train(replayMemory[i].states, toutputsOld);                                     // value and it's used to train NN for [i] state
+                List<float> calcOutputs = ann.Train(replayMemory[i].states, toutputsOld);           // value and it's used to train NN for [i] state
+                for (int j = 0; j < calcOutputs.Count; j++)
+                    thisError += (Mathf.Pow((toutputsOld[j] - calcOutputs[j]), 2));
+                thisError = thisError / calcOutputs.Count;
+                sse += thisError;
+            }
+            sse /= replayMemory.Count;
+
+            if (lastSSE < sse)
+            {
+                //ann.LoadWeights(currentWeights);
+                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.4f);
+            }
+            else
+            {
+                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.4f);
+                lastSSE = sse;
             }
 
             if (timer > bestTime)
@@ -385,48 +405,68 @@ public class VehicleController : MonoBehaviour {
 
     void ResetVehicle()
     {
+        if (reLearnCounter == 0)
+        {
+            if (reward > 0f)
+            {
+                rewardCounter++;
+            }
+            else
+            {
+                ann = new ANN(4, 4, 2, 7, 0.3f);
+                reLearnCounter = rlcValue;
+                this.transform.position = vehicleStartPos;
+                this.transform.rotation = vehicleStartRot;
+                rb.velocity = new Vector3(0f, 0f, 0f);
+                rb.angularVelocity = new Vector3(0f, 0f, 0f);
+                LightSource.transform.position = lightStartPos;
+                wall.transform.position = wallStartPos;
+                wall.transform.Rotate(0f, 0f, 0f, 0f);
+                wall.transform.localScale = new Vector3(15f, 30f, 4f);
+                Debug.Log("---------------------------------------RESTART!------------------------------------------");
+            }
+
+            if (rewardCounter > 15)
+            {
+                SaveWeightsToFile();
+                Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
+                Debug.Break();
+            }
+        }
+        else
+            reLearnCounter--;
+
         this.transform.position = vehicleStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-5, 5)));
         this.transform.rotation = vehicleStartRot;
         rb.velocity = new Vector3(0f, 0f, 0f);
         rb.angularVelocity = new Vector3(0f, 0f, 0f);
         LightSource.transform.position = lightStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-20, 10)));
         wall.transform.position = wallStartPos + new Vector3(Random.Range(-10, 10), 0, 0);
-        wall.transform.Rotate(0f, Random.Range(-180f,180f), 0f, 0f);
+        wall.transform.Rotate(0f, Random.Range(-180f, 180f), 0f, 0f);
         wall.transform.localScale = new Vector3(Random.Range(10f, 20f), 30f, 4f);
         deltaCounter = 20;
         intensityOld = 0.0f;
         win = false;
         timer = 0;
         collisionFail = false;
+        backFail = false;
         resetCounter++;
-        Debug.Log(resetCounter + ". Reward = " + reward);
+        Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ". Reward = " + reward);
         reward = 0;
         resetTimer = 500;
-        /*
-        ultraSens1.deltaCounter = 20;
-        ultraSens2.deltaCounter = 20;
-        ultraSens3.deltaCounter = 20;
-        ultraSens4.deltaCounter = 20;
-        ultraSens5.deltaCounter = 20;
-        ultraSens1.distanceOld = 0.0f;
-        ultraSens2.distanceOld = 0.0f;
-        ultraSens3.distanceOld = 0.0f;
-        ultraSens4.distanceOld = 0.0f;
-        ultraSens5.distanceOld = 0.0f;
-        */
     }
 
     private void FixedUpdate()
     {
         UpdateInput();
         Drive();
-        Steer();
+        //Steer();
         saveTimer--;
         if (saveTimer == 0)
         {
             SaveWeightsToFile();
             Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
-            saveTimer = 25000;
+            saveTimer = 50000;
         }
     }
 
@@ -476,39 +516,43 @@ public class VehicleController : MonoBehaviour {
 
     float Round(float x)
     {
-        return (float)System.Math.Round(x, 1, System.MidpointRounding.AwayFromZero); ;
+        return (float)System.Math.Round(x, 2, System.MidpointRounding.AwayFromZero);
     }
 
     private void OnGUI()
     {
         /*
         GUI.color = Color.red;
-        GUI.Label(new Rect(25, 25, 250, 30), "US1: " + states[0]);
+        GUI.Label(new Rect(25, 25, 250, 30), "US1: " + states[2]);
         GUI.Label(new Rect(25, 50, 250, 30), "US2: " + states[1]);
         GUI.Label(new Rect(25, 75, 250, 30), "US3: " + states[2]);
         GUI.Label(new Rect(25, 100, 250, 30), "US4: " + states[3]);
         GUI.Label(new Rect(25, 125, 250, 30), "US5: " + states[4]);
-
+        */
         GUI.color = Color.blue;
-        GUI.Label(new Rect(150, 25, 250, 30), "PT1: " + states[7]);
-        GUI.Label(new Rect(150, 50, 250, 30), "PT2: " + states[8]);
-        GUI.Label(new Rect(150, 75, 250, 30), "PT3: " + states[9]);
-        GUI.Label(new Rect(150, 100, 250, 30), "PT4: " + states[10]);
+        GUI.Label(new Rect(150, 25, 250, 30), "PT1: " + states[0]);
+        GUI.Label(new Rect(150, 50, 250, 30), "PT2: " + states[1]);
+        GUI.Label(new Rect(150, 75, 250, 30), "PT3: " + states[2]);
+        GUI.Label(new Rect(150, 100, 250, 30), "PT4: " + states[3]);
+
+        GUI.color = Color.black;
+        GUI.Label(new Rect(220, 25, 250, 30), "Przód: " + qs[0]);
+        GUI.Label(new Rect(220, 50, 250, 30), "Tył: " + qs[1]);
+        GUI.Label(new Rect(220, 75, 250, 30), "Prawo: " + qs[2]);
+        GUI.Label(new Rect(220, 100, 250, 30), "Lewo: " + qs[3]);
 
         GUI.color = Color.green;
-        GUI.Label(new Rect(300, 25, 250, 30), "Fails: " + failCount);
-        GUI.Label(new Rect(300, 50, 250, 30), "Decay Rate: " + exploreRate);
-        GUI.Label(new Rect(300, 75, 250, 30), "Best Time: " + bestTime);
-        GUI.Label(new Rect(300, 100, 250, 30), "Timer: " + timer);
-        GUI.Label(new Rect(300, 125, 250, 30), "Reward: " + reward);
-        GUI.Label(new Rect(300, 150, 250, 30), "Time Scale: " + Time.timeScale);
-        GUI.Label(new Rect(300, 200, 250, 30), "Delta light: " + deltaIntensity);
-        GUI.Label(new Rect(300, 225, 250, 30), "Reward Sum: " + rewardSum);
-        GUI.Label(new Rect(300, 250, 250, 30), "Punishment Sum: " + punishSum);
-        GUI.Label(new Rect(300, 275, 250, 30), "Move forward: " + forward);
-        GUI.Label(new Rect(300, 300, 250, 30), "Velx: " + states[5]);
-        GUI.Label(new Rect(300, 325, 250, 30), "Velz: " + states[6]);
-        */
+        GUI.Label(new Rect(400, 25, 250, 30), "Fails: " + failCount);
+        GUI.Label(new Rect(400, 50, 250, 30), "Decay Rate: " + exploreRate);
+        GUI.Label(new Rect(400, 75, 250, 30), "Best Time: " + bestTime);
+        GUI.Label(new Rect(400, 100, 250, 30), "Timer: " + timer);
+        GUI.Label(new Rect(400, 125, 250, 30), "Time Scale: " + Time.timeScale);
+        //GUI.Label(new Rect(300, 150, 250, 30), "Velx: " + states[0]);
+        //GUI.Label(new Rect(300, 175, 250, 30), "Velz: " + states[1]);
+        GUI.Label(new Rect(400, 200, 250, 30), "eta: " + ann.eta);
+        GUI.Label(new Rect(400, 225, 250, 30), "last SSE: " + lastSSE);
+        GUI.Label(new Rect(400, 250, 250, 30), "delta light: " + deltaIntensity);
+
     }
 
 }
