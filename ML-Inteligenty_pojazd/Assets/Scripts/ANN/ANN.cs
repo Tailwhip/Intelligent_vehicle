@@ -10,6 +10,7 @@ public class ANN {
     public int numHidden;
     public int numNPerHidden;
     public float M;
+    public List<float> neuronValue = new List<float>();
     public float alpha = 0.9f;
     public float eta;
     private float wOld = 0f;
@@ -100,6 +101,7 @@ public class ANN {
         List<float> inputs = new List<float>();
         List<float> outputValues = new List<float>();
         int currentInput = 0;
+        neuronValue.Clear();
 
         if (inputValues.Count != numInputs)
         {
@@ -133,7 +135,12 @@ public class ANN {
                 if (i == numHidden)
                     layers[i].neurons[j].output = ActivationFunctionO(N);
                 else
+                {
                     layers[i].neurons[j].output = ActivationFunction(N);
+                    neuronValue.Add(ActivationFunction(N));
+
+                }
+                    
                 outputValues.Add(layers[i].neurons[j].output);
                 currentInput = 0;
             }
@@ -224,7 +231,7 @@ public class ANN {
     //--------------------------------------------ACTIVATION-FUNCTIONS------------------------------------------------------  
 	float ActivationFunction(float value)
 	{
-		return ReLu(value);
+		return TanH(value);
 	}
 
 	float ActivationFunctionO(float value)
@@ -268,7 +275,7 @@ public class ANN {
     //----------------------------------------ACTIVATION-FUNCTIONS-DERIVATIVES-----------------------------------------------------  
     float AFDerivative(float value)
     {
-        return ReLuDerivative(value);
+        return TanHDerivative(value);
     }
 
     float AFDerivativeO(float value)

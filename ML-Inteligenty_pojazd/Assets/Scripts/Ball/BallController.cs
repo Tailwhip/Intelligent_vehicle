@@ -338,13 +338,24 @@ public class BallController : MonoBehaviour {
     private void OnGUI()
     {
         GUI.color = Color.red;
-        GUI.Label(new Rect(100, 25, 250, 30), "Platform X Rot: " + states[0]);
-        GUI.Label(new Rect(100, 50, 250, 30), "Ball Z position: " + states[1]);
-        GUI.Label(new Rect(100, 75, 250, 30), "Ball X position: " + states[2]);
+        GUI.Label(new Rect(20, 25, 250, 30), "Platform X Rot: " + states[0]);
+        GUI.Label(new Rect(20, 50, 250, 30), "Ball Z position: " + states[1]);
+        GUI.Label(new Rect(20, 75, 250, 30), "Ball X position: " + states[2]);
 
         GUI.color = Color.black;
-        GUI.Label(new Rect(220, 25, 250, 30), "Prawo: " + qs[0]);
-        GUI.Label(new Rect(220, 50, 250, 30), "Lewo: " + qs[1]);
+        for (int i = 0; i < ann.numHidden; i++)
+        {
+            int pos = 25;
+            for (int j = 0; j < ann.numNPerHidden; j++)
+            {
+                GUI.Label(new Rect(150, pos, 250, 30), "N" + (j + 1) + ": " + ann.neuronValue[j]);
+                pos += 25;
+            }
+        }
+
+        GUI.color = Color.black;
+        GUI.Label(new Rect(250, 25, 250, 30), "Prawo: " + qs[0]);
+        GUI.Label(new Rect(250, 50, 250, 30), "Lewo: " + qs[1]);
 
         GUI.color = Color.green;
         GUI.Label(new Rect(400, 25, 250, 30), "Fails: " + failCount);

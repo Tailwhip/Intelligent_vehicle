@@ -43,10 +43,18 @@ public class VehicleController : MonoBehaviour {
     private bool win = false;
     private int saveTimer = 50000;
 
+    /// aNN definition:
+    private int inputNumber = 4;
+    private int outputNumber = 4;
+    private int hiddenNumber = 1;
+    private int hidNeuronsNumber = 7;
+    private float n = 0.3f;
+
+    /// aNN variables:
     private ANN ann;
     private List<float> calcOutputs;
     private List<float> states;
-    private List<float> qs;
+    private List<float> qs = new List<float>();
     public float sse = 0f;
     public float lastSSE = 1f;
     string currentWeights;
@@ -58,14 +66,14 @@ public class VehicleController : MonoBehaviour {
     private int mCapacity = 10000;                          //memory capacity
 
     private float discount = 0.95f;                         //how much future states affect rewards
-    private float exploreRate = 0.05f;                      //chance of picking random action
+    private float exploreRate = 10f;                        //chance of picking random action
     private float maxExploreRate = 100.0f;					//max chance value
     private float minExploreRate = 0.05f;					//min chance value
     private float exploreDecay = 0.01f;
     private int resetTimer = 500;
     private int resetCounter = 0;
     private int reLearnCounter;
-    private int rlcValue = 5000;
+    private int rlcValue = 10000;
     private int rewardCounter = 0;
 
     /// objects:
@@ -81,7 +89,7 @@ public class VehicleController : MonoBehaviour {
 
     /// variables to count delta intensity:
     private float deltaIntensity = 0f;
-    private float intensityOld = 0f;
+    private float intensityOld = 100f;
     private float intensity = 0f;
     private int deltaCounter = 1;
 
@@ -98,14 +106,14 @@ public class VehicleController : MonoBehaviour {
 
     private void Start()
     {
-        ann = new ANN(4, 4, 2, 7, 0.3f);
+        ann = new ANN(inputNumber, outputNumber, hiddenNumber, hidNeuronsNumber, n);
         /*
         if (File.Exists(Application.dataPath + "/weights.txt"))
         {
             LoadWeightsFromFile();
             exploreRate = 0.05f;
         }
-        */  
+        */
         intensityOld = 0;
         Time.timeScale = 1f;
         reLearnCounter = rlcValue;
@@ -158,15 +166,12 @@ public class VehicleController : MonoBehaviour {
     {
         if (Input.GetKey("w"))
         {
-            //this.transform.position += this.transform.forward * 2f;
             rb.AddForce(this.transform.forward * 200f);
             //this.transform.Translate(this.transform.forward * 2f);
         }
 
-
         if (Input.GetKey("s"))
         {
-            //this.transform.Translate(this.transform.forward * -2f);
             //this.transform.position += this.transform.forward * -2f;
             rb.AddForce(this.transform.forward * -200f);
         }
@@ -264,7 +269,7 @@ public class VehicleController : MonoBehaviour {
         resetTimer--;
         timer += Time.deltaTime;
 
-        qs = new List<float>();
+        qs.Clear();
         qs = SoftMax(ann.CalcOutput(states));
 
         float maxQ = qs.Max();
@@ -301,27 +306,25 @@ public class VehicleController : MonoBehaviour {
         }
         
         deltaCounter--;
-        /*
-        // counting delta intensity and use it to punish or reward:
+        
+        /// counting delta intensity and use it to punish or reward:
         if (deltaCounter == 0)
         {
             deltaCounter = 1;
-            deltaIntensity =  intensityOld - intensity1.magnitude;
+            deltaIntensity =  intensityOld - ((intensity1.magnitude + intensity2.magnitude + intensity3.magnitude + intensity4.magnitude) / 4);
             //Debug.Log("DETLA: " + deltaIntensity);
-            if (deltaIntensity > 0.1f)
+            if (deltaIntensity > 0.0f)
             {
-                reward += 0.001f;
+                reward += 0.005f;
             }
             else
             {
-                //backFail = true;
-                reward += -0.002f;
+                reward = -1.0f;
+                win = true;
             }
-
-            intensityOld = intensity1.magnitude;
+            intensityOld = (intensity1.magnitude + intensity2.magnitude + intensity3.magnitude + intensity4.magnitude) / 4;
         }
-        */
-        reward += -0.002f;
+
         if (collisionFail)
         {
             reward = -1.0f;
@@ -333,7 +336,7 @@ public class VehicleController : MonoBehaviour {
             win = true;
         }
 
-        // setting replay memory:
+        /// setting replay memory:
         Replay lastMemory = new Replay(states, reward);
 
         if (replayMemory.Count > mCapacity)
@@ -341,8 +344,8 @@ public class VehicleController : MonoBehaviour {
 
         replayMemory.Add(lastMemory);
 
-        // training through replay memory:
-        if (collisionFail || resetTimer == 0 || win || backFail)
+        /// training through replay memory:
+        if (collisionFail || resetTimer == 0 || win)
         {
             
             for (int i = replayMemory.Count - 1; i >= 0; i--)
@@ -355,7 +358,7 @@ public class VehicleController : MonoBehaviour {
                 int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
 
                 float feedback;
-                if (i == replayMemory.Count - 1 || replayMemory[i].reward == -1)                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
+                if (i == replayMemory.Count - 1)                                                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
                 {                                                                                   // it's collision fail, timer reset and getting into the source of light) then the  
                     feedback = replayMemory[i].reward;                                              // feedback (new reward) is equal to the reward in [i] replay memory, because it's the end of the
                 }                                                                                   // sequence and there's no event after to count Bellman's equation
@@ -367,6 +370,7 @@ public class VehicleController : MonoBehaviour {
                     feedback = (replayMemory[i].reward +
                         discount * maxQ);
                 }
+
                 float thisError = 0f;
                 currentWeights = ann.PrintWeights();
 
@@ -382,11 +386,11 @@ public class VehicleController : MonoBehaviour {
             if (lastSSE < sse)
             {
                 //ann.LoadWeights(currentWeights);
-                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.4f);
+                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.4f);
             }
             else
             {
-                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.4f);
+                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.4f);
                 lastSSE = sse;
             }
 
@@ -405,6 +409,7 @@ public class VehicleController : MonoBehaviour {
 
     void ResetVehicle()
     {
+        
         if (reLearnCounter == 0)
         {
             if (reward > 0f)
@@ -413,8 +418,9 @@ public class VehicleController : MonoBehaviour {
             }
             else
             {
-                ann = new ANN(4, 4, 2, 7, 0.3f);
                 reLearnCounter = rlcValue;
+                
+                ann = new ANN(inputNumber, outputNumber, hiddenNumber, hidNeuronsNumber, n);
                 this.transform.position = vehicleStartPos;
                 this.transform.rotation = vehicleStartRot;
                 rb.velocity = new Vector3(0f, 0f, 0f);
@@ -424,6 +430,7 @@ public class VehicleController : MonoBehaviour {
                 wall.transform.Rotate(0f, 0f, 0f, 0f);
                 wall.transform.localScale = new Vector3(15f, 30f, 4f);
                 Debug.Log("---------------------------------------RESTART!------------------------------------------");
+                
             }
 
             if (rewardCounter > 15)
@@ -435,7 +442,7 @@ public class VehicleController : MonoBehaviour {
         }
         else
             reLearnCounter--;
-
+        
         this.transform.position = vehicleStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-5, 5)));
         this.transform.rotation = vehicleStartRot;
         rb.velocity = new Vector3(0f, 0f, 0f);
@@ -454,6 +461,8 @@ public class VehicleController : MonoBehaviour {
         Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ". Reward = " + reward);
         reward = 0;
         resetTimer = 500;
+        //deltaIntensity = 100f;
+        intensityOld = 100f;
     }
 
     private void FixedUpdate()
@@ -467,6 +476,7 @@ public class VehicleController : MonoBehaviour {
             SaveWeightsToFile();
             Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
             saveTimer = 50000;
+            exploreRate = 99f;
         }
     }
 
@@ -529,30 +539,45 @@ public class VehicleController : MonoBehaviour {
         GUI.Label(new Rect(25, 100, 250, 30), "US4: " + states[3]);
         GUI.Label(new Rect(25, 125, 250, 30), "US5: " + states[4]);
         */
+        
         GUI.color = Color.blue;
-        GUI.Label(new Rect(150, 25, 250, 30), "PT1: " + states[0]);
-        GUI.Label(new Rect(150, 50, 250, 30), "PT2: " + states[1]);
-        GUI.Label(new Rect(150, 75, 250, 30), "PT3: " + states[2]);
-        GUI.Label(new Rect(150, 100, 250, 30), "PT4: " + states[3]);
+        GUI.Label(new Rect(10, 25, 250, 30), "PT1: " + states[0]);
+        GUI.Label(new Rect(10, 50, 250, 30), "PT2: " + states[1]);
+        GUI.Label(new Rect(10, 75, 250, 30), "PT3: " + states[2]);
+        GUI.Label(new Rect(10, 100, 250, 30), "PT4: " + states[3]);
 
         GUI.color = Color.black;
-        GUI.Label(new Rect(220, 25, 250, 30), "Przód: " + qs[0]);
-        GUI.Label(new Rect(220, 50, 250, 30), "Tył: " + qs[1]);
-        GUI.Label(new Rect(220, 75, 250, 30), "Prawo: " + qs[2]);
-        GUI.Label(new Rect(220, 100, 250, 30), "Lewo: " + qs[3]);
+        for (int i = 0; i < ann.numHidden; i++)
+        {
+            int height = 25;
+            for (int j = 0; j < ann.numNPerHidden; j++)
+            {
+                GUI.Label(new Rect(((i+1)*100), height, 250, 30), "N" + (j + 1) + ": " + ann.neuronValue[j]);
+                height += 25;
+            }
+        }
 
+        GUI.color = Color.red;
+        /// NN output:
+        GUI.Label(new Rect(300, 25, 250, 30), "Przód: " + qs[0]);
+        GUI.Label(new Rect(300, 50, 250, 30), "Tył: " + qs[1]);
+        GUI.Label(new Rect(300, 75, 250, 30), "Prawo: " + qs[2]);
+        GUI.Label(new Rect(300, 100, 250, 30), "Lewo: " + qs[3]);
+        /*
         GUI.color = Color.green;
-        GUI.Label(new Rect(400, 25, 250, 30), "Fails: " + failCount);
-        GUI.Label(new Rect(400, 50, 250, 30), "Decay Rate: " + exploreRate);
-        GUI.Label(new Rect(400, 75, 250, 30), "Best Time: " + bestTime);
-        GUI.Label(new Rect(400, 100, 250, 30), "Timer: " + timer);
-        GUI.Label(new Rect(400, 125, 250, 30), "Time Scale: " + Time.timeScale);
-        //GUI.Label(new Rect(300, 150, 250, 30), "Velx: " + states[0]);
-        //GUI.Label(new Rect(300, 175, 250, 30), "Velz: " + states[1]);
-        GUI.Label(new Rect(400, 200, 250, 30), "eta: " + ann.eta);
-        GUI.Label(new Rect(400, 225, 250, 30), "last SSE: " + lastSSE);
-        GUI.Label(new Rect(400, 250, 250, 30), "delta light: " + deltaIntensity);
-
+        GUI.Label(new Rect(500, 25, 250, 30), "Fails: " + failCount);
+        GUI.Label(new Rect(500, 50, 250, 30), "Decay Rate: " + exploreRate);
+        GUI.Label(new Rect(500, 75, 250, 30), "Best Time: " + bestTime);
+        GUI.Label(new Rect(500, 100, 250, 30), "Timer: " + timer);
+        GUI.Label(new Rect(500, 125, 250, 30), "Time Scale: " + Time.timeScale);
+        //GUI.Label(new Rect(500, 150, 250, 30), "Velx: " + states[0]);
+        //GUI.Label(new Rect(500, 175, 250, 30), "Velz: " + states[1]);
+        */
+        
+        GUI.Label(new Rect(500, 200, 250, 30), "eta: " + ann.eta);
+        GUI.Label(new Rect(500, 225, 250, 30), "last SSE: " + lastSSE);
+        GUI.Label(new Rect(500, 250, 250, 30), "delta light: " + deltaIntensity);
+        
     }
 
 }
