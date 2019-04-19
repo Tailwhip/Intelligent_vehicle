@@ -60,11 +60,31 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\CodeMonkey\Assets.cs" />
+    <Compile Include="Assets\CodeMonkey\CMDebug.cs" />
+    <Compile Include="Assets\CodeMonkey\MonoBehaviours\CameraFollow.cs" />
+    <Compile Include="Assets\CodeMonkey\MonoBehaviours\CameraFollowSetup.cs" />
+    <Compile Include="Assets\CodeMonkey\MonoBehaviours\ComponentActions.cs" />
+    <Compile Include="Assets\CodeMonkey\MonoBehaviours\PositionRendererSorter.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\Button_Sprite.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\Button_UI.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\FunctionPeriodic.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\FunctionTimer.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\FunctionUpdater.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\UI_Bar.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\UI_BarMultiple.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\UI_Sprite.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\UI_TextComplex.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\UtilsClass.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\World_Bar.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\World_Mesh.cs" />
+    <Compile Include="Assets\CodeMonkey\Utils\World_Sprite.cs" />
     <Compile Include="Assets\Scripts\ANN\ANN.cs" />
     <Compile Include="Assets\Scripts\ANN\Layer.cs" />
     <Compile Include="Assets\Scripts\ANN\Neuron.cs" />
     <Compile Include="Assets\Scripts\Ball\BallController.cs" />
     <Compile Include="Assets\Scripts\Ball\BallState.cs" />
+    <Compile Include="Assets\Scripts\Graph\Window_Graph.cs" />
     <Compile Include="Assets\Scripts\GUIController.cs" />
     <Compile Include="Assets\Scripts\PhototransistorMeassure.cs" />
     <Compile Include="Assets\Scripts\PTRefLab.cs" />
@@ -72,6 +92,8 @@
     <Compile Include="Assets\Scripts\VehicleController.cs" />
     <None Include="Assets\Weights\2019-03-22-BallWeights.txt" />
     <None Include="Assets\BallWeights.txt" />
+    <None Include="Assets\CodeMonkey\README.txt" />
+    <None Include="Assets\QValues.txt" />
     <None Include="Assets\Weights\2019-03-17-weights_po_kwantyzacji_stanów.txt" />
     <None Include="Assets\weights.txt" />
     <Reference Include="Unity.TextMeshPro.Editor">

@@ -70,7 +70,7 @@ public class BallController : MonoBehaviour {
         ballStartRot = ball.transform.rotation;
         platformStartPos = this.transform.position;
         platformStartRot = this.transform.rotation;
-        Time.timeScale = 100f;
+        Time.timeScale = 1f;
     }
 
     private void Update()
@@ -211,12 +211,12 @@ public class BallController : MonoBehaviour {
             if(lastSSE < sse)
             {
                 //ann.LoadWeights(currentWeights);
-                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.01f, 0.9f);
+                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.01f, 0.9f);
             }
             else
             {
                 Debug.Log(sse);
-                ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.01f, 0.9f);
+                ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.01f, 0.9f);
                 lastSSE = sse;
             }
             

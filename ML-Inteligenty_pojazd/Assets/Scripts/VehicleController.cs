@@ -22,8 +22,6 @@ public class Replay
 
 public class VehicleController : MonoBehaviour {
 
-    public GameObject LightSource;
-
     /// Ultrasonic sensors input
     private float visibleDistance = 50f;
     private float US1distance = 0f;
@@ -42,6 +40,7 @@ public class VehicleController : MonoBehaviour {
     private bool backFail = false;
     private bool win = false;
     private int saveTimer = 50000;
+    private bool save = false;
 
     /// aNN definition:
     private int inputNumber = 4;
@@ -57,8 +56,10 @@ public class VehicleController : MonoBehaviour {
     private List<float> qs = new List<float>();
     public float sse = 0f;
     public float lastSSE = 1f;
+    public float lastRewardSum = 1f;
     string currentWeights;
 
+    List<float> Rewards = new List<float>();
     private float reward = 0.0f;                            //reward to associate with actions
     private float rewardSum = 0.0f;
     private float punishSum = 0.0f;
@@ -79,6 +80,8 @@ public class VehicleController : MonoBehaviour {
     /// objects:
     private Rigidbody rb;
     public GameObject wall;
+    public GameObject LightSource;
+    public Window_Graph graph;
 
     /// variables for reset the agent:
     private Quaternion vehicleStartRot;
@@ -146,6 +149,12 @@ public class VehicleController : MonoBehaviour {
             Time.timeScale = 40f;
         if (Input.GetKeyDown("5"))
             Time.timeScale = 100f;
+
+        if (Input.GetKeyDown("z"))
+            if (save == true)
+                save = false;
+            else
+                save = true;
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -284,17 +293,15 @@ public class VehicleController : MonoBehaviour {
         /// move forward:
         if (maxQIndex == 0)
         {
-            //this.transform.position += this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 2f;
             rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 200f);
         }
         
         if (maxQIndex == 1)
         {
-            //this.transform.position += this.transform.forward * Mathf.Clamp(qs[maxQIndex], -1f, 1f) * -2f;
             rb.AddForce(this.transform.forward * Mathf.Clamp(qs[maxQIndex], 0f, 1f) * -200f);
         }
         
-        // turning:
+        //? turning:
         if (maxQIndex == 2)
         {
             this.transform.Rotate(0, Mathf.Clamp(qs[maxQIndex], -1f, 1f) * 2f, 0, 0);
@@ -306,56 +313,63 @@ public class VehicleController : MonoBehaviour {
         }
         
         deltaCounter--;
-        
+
         /// counting delta intensity and use it to punish or reward:
         if (deltaCounter == 0)
         {
-            deltaCounter = 1;
-            deltaIntensity =  intensityOld - ((intensity1.magnitude + intensity2.magnitude + intensity3.magnitude + intensity4.magnitude) / 4);
+            deltaCounter = 50;
+            deltaIntensity = intensityOld - ((intensity1.magnitude + intensity2.magnitude + intensity3.magnitude + intensity4.magnitude) / 4);
             //Debug.Log("DETLA: " + deltaIntensity);
-            if (deltaIntensity > 0.0f)
+            if (deltaIntensity > 0.10f)
             {
-                reward += 0.005f;
+                reward += 0.01f;
             }
             else
             {
-                reward = -1.0f;
-                win = true;
+                reward = -20f;
+                backFail = true;
             }
             intensityOld = (intensity1.magnitude + intensity2.magnitude + intensity3.magnitude + intensity4.magnitude) / 4;
         }
+        else
+            reward += -0.001f;
 
         if (collisionFail)
         {
-            reward = -1.0f;
+            reward += -1.0f;
         }
 
         if (intensity > resetFactor)
         {
-            reward = 1.0f;
+            reward = 5.0f;
             win = true;
         }
 
         /// setting replay memory:
         Replay lastMemory = new Replay(states, reward);
 
+        Rewards.Add(reward);
+        
         if (replayMemory.Count > mCapacity)
             replayMemory.RemoveAt(0);
 
         replayMemory.Add(lastMemory);
 
         /// training through replay memory:
-        if (collisionFail || resetTimer == 0 || win)
+        if (collisionFail || resetTimer == 0 || win || backFail)
         {
+            List<float> QOld = new List<float>();
+            List<float> QNew = new List<float>();
             
             for (int i = replayMemory.Count - 1; i >= 0; i--)
             {
                 List<float> toutputsOld = new List<float>();                                        // List of actions at time [t] (present)
                 List<float> toutputsNew = new List<float>();                                        // List of actions at time [t + 1] (future)
                 toutputsOld = SoftMax(ann.CalcOutput(replayMemory[i].states));                      // Action in time [t] is equal to NN output for [i] step states in replay memory
-                    
+
                 float maxQOld = toutputsOld.Max();                                                  // maximum Q value at [i] step is equal to maximum Q value in the list of actions in time [t]
                 int action = toutputsOld.ToList().IndexOf(maxQOld);                                 // number of action (in list of actions at time [t]) with maximum Q value is setted
+                QOld.Add(toutputsOld[action]);
 
                 float feedback;
                 if (i == replayMemory.Count - 1)                                                    // if it's the end of replay memory or if by any reason it's the end of the sequence (in this case
@@ -370,6 +384,10 @@ public class VehicleController : MonoBehaviour {
                     feedback = (replayMemory[i].reward +
                         discount * maxQ);
                 }
+                QNew.Add(feedback);
+
+                if (save == true)
+                    SaveToFile(QOld, QNew, Rewards, "QValues");
 
                 float thisError = 0f;
                 currentWeights = ann.PrintWeights();
@@ -383,7 +401,8 @@ public class VehicleController : MonoBehaviour {
             }
             sse /= replayMemory.Count;
 
-            if (lastSSE < sse)
+
+            if (lastRewardSum < Rewards.Sum())
             {
                 //ann.LoadWeights(currentWeights);
                 ann.eta = Mathf.Clamp(ann.eta - 0.001f, 0.1f, 0.4f);
@@ -391,7 +410,7 @@ public class VehicleController : MonoBehaviour {
             else
             {
                 ann.eta = Mathf.Clamp(ann.eta + 0.001f, 0.1f, 0.4f);
-                lastSSE = sse;
+                lastRewardSum = Rewards.Sum();
             }
 
             if (timer > bestTime)
@@ -404,6 +423,7 @@ public class VehicleController : MonoBehaviour {
 
             replayMemory.Clear();
             ResetVehicle();
+            Rewards.Clear();
         }
     }
 
@@ -458,11 +478,24 @@ public class VehicleController : MonoBehaviour {
         collisionFail = false;
         backFail = false;
         resetCounter++;
-        Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ". Reward = " + reward);
+        Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ".Total reward: " + Rewards.Sum());
         reward = 0;
         resetTimer = 500;
         //deltaIntensity = 100f;
         intensityOld = 100f;
+    }
+
+    public void SaveToFile(List<float> qold, List<float> qnew, List<float> rewards, string filename)
+    {
+        string data = "";
+        for (int i = 0; i < qold.Count; i++)
+        {
+            data += i + ";" + qold[i] + ";" + qnew[i] + ";" + rewards[i] + System.Environment.NewLine;
+        }
+        string path = Application.dataPath + "/" + filename + ".txt";
+        StreamWriter wf = File.CreateText(path);
+        wf.WriteLine(data);
+        wf.Close();
     }
 
     private void FixedUpdate()
@@ -577,7 +610,10 @@ public class VehicleController : MonoBehaviour {
         GUI.Label(new Rect(500, 200, 250, 30), "eta: " + ann.eta);
         GUI.Label(new Rect(500, 225, 250, 30), "last SSE: " + lastSSE);
         GUI.Label(new Rect(500, 250, 250, 30), "delta light: " + deltaIntensity);
-        
+        if (save == true)
+            GUI.Label(new Rect(500, 275, 250, 30), "Save mode [Z button]: ON");
+        else
+            GUI.Label(new Rect(500, 275, 250, 30), "Save mode [Z button]: OFF");
     }
 
 }
