@@ -138,7 +138,6 @@ public class ANN {
                 {
                     layers[i].neurons[j].output = ActivationFunction(N);
                     neuronValue.Add(ActivationFunction(N));
-
                 }
                     
                 outputValues.Add(layers[i].neurons[j].output);

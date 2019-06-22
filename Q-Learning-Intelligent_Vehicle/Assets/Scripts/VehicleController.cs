@@ -38,21 +38,25 @@ public class VehicleController : MonoBehaviour {
     /// Velocity input
     public AccelerometerMeassure accelerometer;
 
-    /// Variables for reward function
-    private bool collisionFail = false;
-    private bool backFail = false;
-    private bool win = false;
-    private int saveTimer = 50000;
-    private bool save = false;
-
-    /// aNN definition:
+    /// aNN definition
     private int inputNumber = 11;
     private int outputNumber = 4;
     private int hiddenNumber = 1;
     private int hidNeuronsNumber = 32;
     private float n = 0.3f;
 
-    /// aNN variables:
+    /// Variables for reward function
+    private bool collisionFail = false;
+    private bool backFail = false;
+    private bool win = false;
+
+    /// Variables to count delta intensity
+    private float deltaIntensity;
+    private float intensityOld = 0f;
+    private float intensity = 0f;
+    private int deltaCounter = 1;
+
+    /// Q-Learning variables
     private ANN ann;
     private List<float> calcOutputs;
     private List<float> states;
@@ -60,12 +64,9 @@ public class VehicleController : MonoBehaviour {
     public float sse = 0f;
     public float lastSSE = 1f;
     public float lastRewardSum = 1f;
-    string currentWeights;
 
     List<float> Rewards = new List<float>();
     private float reward = 0.0f;                            //reward to associate with actions
-    private float rewardSum = 0.0f;
-    private float punishSum = 0.0f;
     private List<Replay> replayMemory = new List<Replay>(); //memory - list of past actions and rewards
     private int mCapacity = 10000;                          //memory capacity
 
@@ -74,34 +75,31 @@ public class VehicleController : MonoBehaviour {
     private float maxExploreRate = 100.0f;					//max chance value
     private float minExploreRate = 0.05f;					//min chance value
     private float exploreDecay = 0.01f;
-    private int resetTimer = 500;
-    private int resetCounter = 0;
-    private int reLearnCounter;
-    private int rlcValue = 10000;
-    private int rewardCounter = 0;
+    
+    /// variables for saving ANN weights
+    string currentWeights;
+    private bool save = false;
+    private int saveTimer = 50000;
 
-    /// objects:
+    /// objects
     private Rigidbody rb;
     public GameObject wall;
     public GameObject LightSource;
 
-    /// variables for reset the agent:
+    /// variables for reset the agent
     private Quaternion vehicleStartRot;
     private Vector3 vehicleStartPos;
     private Vector3 lightStartPos;
     private Vector3 wallStartPos;
-    private float resetFactor = 3.5f;                       //light bias value for reset training:
+    private float lightThreshold = 3.5f;                       //light bias value for reset training:
+    private int resetTimer = 500;
+    private int resetCounter = 0;
 
-    /// Variables to count delta intensity:
-    private float deltaIntensity;
-    private float intensityOld = 0f;
-    private float intensity = 0f;
-    private int deltaCounter = 1;
-
-    /// For OnGUI to display
-    private int failCount = 0;
-    private float timer = 0;
-    private float bestTime = 0;
+    /// relearn variables
+    private int reLearnCounter;
+    private int rlcValue = 10000;
+    private int rewardCounter = 0;
+    
 
     private void Start()
     {
@@ -239,26 +237,78 @@ public class VehicleController : MonoBehaviour {
             }
             intensityOld = intensity;
         }
-        else
-            //reward += -0.001f;
 
         if (collisionFail)
         {
             reward = -1.0f;
         }
 
-        if (intensity > resetFactor)
+        if (intensity > lightThreshold)
         {
             reward = 1.0f;
             win = true;
         }
     }
 
+    void ResetVehicle()
+    {
+        if (reLearnCounter == 0)
+        {
+            if (reward > 0f)
+            {
+                rewardCounter++;
+            }
+            else
+            {
+                reLearnCounter = rlcValue;
+
+                ann = new ANN(inputNumber, outputNumber, hiddenNumber, hidNeuronsNumber, n);
+                this.transform.position = vehicleStartPos;
+                this.transform.rotation = vehicleStartRot;
+                rb.velocity = new Vector3(0f, 0f, 0f);
+                rb.angularVelocity = new Vector3(0f, 0f, 0f);
+                LightSource.transform.position = lightStartPos;
+                wall.transform.position = wallStartPos;
+                wall.transform.Rotate(0f, 0f, 0f, 0f);
+                wall.transform.localScale = new Vector3(15f, 30f, 4f);
+                Debug.Log("---------------------------------------RESTART!------------------------------------------");
+
+            }
+
+            if (rewardCounter > 15)
+            {
+                SaveWeightsToFile();
+                Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
+                Debug.Break();
+            }
+        }
+        else
+            reLearnCounter--;
+
+        this.transform.position = vehicleStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-5, 5)));
+        this.transform.rotation = vehicleStartRot;
+        rb.velocity = new Vector3(0f, 0f, 0f);
+        rb.angularVelocity = new Vector3(0f, 0f, 0f);
+        LightSource.transform.position = lightStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-20, 10)));
+        wall.transform.position = wallStartPos + new Vector3(Random.Range(-10, 10), 0, 0);
+        wall.transform.Rotate(0f, Random.Range(-180f, 180f), 0f, 0f);
+        wall.transform.localScale = new Vector3(Random.Range(10f, 20f), 30f, 4f);
+        //deltaCounter = 20f;
+        intensityOld = 0.0f;
+        win = false;
+        collisionFail = false;
+        backFail = false;
+        resetCounter++;
+        Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ".Total reward: " + Rewards.Sum());
+        reward = 0;
+        resetTimer = 500;
+        //intensityOld = 100f;
+    }
+
     private void QLearning()
     { 
         /// Counting timer
         resetTimer--;
-        timer += Time.deltaTime;
 
         qs.Clear();
         qs = SoftMax(ann.CalcOutput(states));
@@ -363,74 +413,10 @@ public class VehicleController : MonoBehaviour {
                 lastRewardSum = Rewards.Sum();
             }
 
-            if (timer > bestTime)
-            {
-                bestTime = timer;
-            }
-
-            if (collisionFail)
-                failCount++;
-
             replayMemory.Clear();
             ResetVehicle();
             Rewards.Clear();
         }
-    }
-
-    void ResetVehicle()
-    {
-        if (reLearnCounter == 0)
-        {
-            if (reward > 0f)
-            {
-                rewardCounter++;
-            }
-            else
-            {
-                reLearnCounter = rlcValue;
-                
-                ann = new ANN(inputNumber, outputNumber, hiddenNumber, hidNeuronsNumber, n);
-                this.transform.position = vehicleStartPos;
-                this.transform.rotation = vehicleStartRot;
-                rb.velocity = new Vector3(0f, 0f, 0f);
-                rb.angularVelocity = new Vector3(0f, 0f, 0f);
-                LightSource.transform.position = lightStartPos;
-                wall.transform.position = wallStartPos;
-                wall.transform.Rotate(0f, 0f, 0f, 0f);
-                wall.transform.localScale = new Vector3(15f, 30f, 4f);
-                Debug.Log("---------------------------------------RESTART!------------------------------------------");
-                
-            }
-
-            if (rewardCounter > 15)
-            {
-                SaveWeightsToFile();
-                Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
-                Debug.Break();
-            }
-        }
-        else
-            reLearnCounter--;
-        
-        this.transform.position = vehicleStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-5, 5)));
-        this.transform.rotation = vehicleStartRot;
-        rb.velocity = new Vector3(0f, 0f, 0f);
-        rb.angularVelocity = new Vector3(0f, 0f, 0f);
-        LightSource.transform.position = lightStartPos + new Vector3(Random.Range(-20, 20), 0, (Random.Range(-20, 10)));
-        wall.transform.position = wallStartPos + new Vector3(Random.Range(-10, 10), 0, 0);
-        wall.transform.Rotate(0f, Random.Range(-180f, 180f), 0f, 0f);
-        wall.transform.localScale = new Vector3(Random.Range(10f, 20f), 30f, 4f);
-        //deltaCounter = 20f;
-        intensityOld = 0.0f;
-        win = false;
-        timer = 0;
-        collisionFail = false;
-        backFail = false;
-        resetCounter++;
-        Debug.Log(Round(resetCounter / rlcValue) + "." + resetCounter + ".Total reward: " + Rewards.Sum());
-        reward = 0;
-        resetTimer = 500;
-        //intensityOld = 100f;
     }
 
     public void SaveToFile(List<float> qold, List<float> qnew, List<float> rewards, string filename)
@@ -444,21 +430,6 @@ public class VehicleController : MonoBehaviour {
         StreamWriter wf = File.CreateText(path);
         wf.WriteLine(data);
         wf.Close();
-    }
-
-    private void FixedUpdate()
-    {
-        UpdateInput();
-        QLearning();
-        //ManualSteering();
-        saveTimer--;
-        if (saveTimer == 0)
-        {
-            SaveWeightsToFile();
-            Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
-            saveTimer = 50000;
-            exploreRate = 99f;
-        }
     }
 
     void SaveWeightsToFile()
@@ -496,15 +467,21 @@ public class VehicleController : MonoBehaviour {
         return result;
     }
 
-    float Map(float newfrom, float newto, float origfrom, float origto, float value)
+    private void FixedUpdate()
     {
-        if (value <= origfrom)
-            return newfrom;
-        else if (value >= origto)
-            return newto;
-        return (newto - newfrom) * ((value - origfrom) / (origto - origfrom)) + newfrom;
+        UpdateInput();
+        QLearning();
+        //ManualSteering();
+        saveTimer--;
+        if (saveTimer == 0)
+        {
+            SaveWeightsToFile();
+            Debug.Log("------------------------------------WEIGHTS_SAVED!-------------------------------------");
+            saveTimer = 50000;
+            exploreRate = 99f;
+        }
     }
-
+    
     float Round(float x)
     {
         return (float)System.Math.Round(x, 2, System.MidpointRounding.AwayFromZero);
